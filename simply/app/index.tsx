@@ -1,6 +1,7 @@
-import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button} from "react-native";
-
+import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button, Pressable, Image} from "react-native";
+import { useFonts } from 'expo-font'; 
 import React, {useRef, useEffect, useState} from 'react'
+import Mainview from './mainview.tsx'
 if (__DEV__) {
   require("./ReactotronConfig");
 }
@@ -16,10 +17,19 @@ export default function Index() {
   const emailInputRef = React.createRef<TextInput>(null); 
   const usernameInputRef = React.createRef<TextInput>(null); 
   const passwordInputRef = React.createRef<TextInput>(null); // references for focusing each input dialog 
+  function logOut() {
+    //function to log out, called when going back to unauthenticated state 
+    setToken("!NOTOKEN"); 
+  }
+  const [loaded, error] = useFonts({
+    'DepartureMono': require('../assets/fonts/DepartureMonoNerdFont-Regular.otf')
+  });
   const switchLoginMode = () => {
    // switches to login mode 
    setLoginMode(true); 
   }
+
+
   const switchInputFromEmail = () => {
     //Switches the input field from email, dependent on the state of the login page 
      {!loginMode ? usernameInputRef.current?.focus() : passwordInputRef.current?.focus()}
@@ -78,7 +88,7 @@ export default function Index() {
       console.log("Token: "+data.token)
       setAuthToken(data.token)
       print("Set token OK")
-    }).catch(error => {console.log(error)}) // enable error banner if server throws back an error 
+    }).catch(error => {setErrorMode(true)}) // enable error banner if server throws back an error 
 
   }
   if (authToken == "!NOTOKEN") return (
@@ -92,7 +102,7 @@ export default function Index() {
         height: "100%"        
       }}
     >
-    <Text style={styles.titleText}>Hello! Welcome to Simply :) </Text>
+    <Text style={styles.titleText}>Hello! Welcome to Simply :)</Text>
     <TextInput
       style={styles.loginInput}
       value={email}
@@ -116,7 +126,6 @@ export default function Index() {
       onChangeText={onChangePassword}
       placeholder="password"
       onSubmitEditing={loginMode ? sendLoginRequest : sendRegisterRequest}
-
       secureTextEntry={true}>
       </TextInput>
       <View style={styles.initButtonContainer}>
@@ -127,12 +136,14 @@ export default function Index() {
     </KeyboardAvoidingView>
 
   );
+  else return(<Mainview props={{authToken: authToken, deAuthFunc: logOut}}/>) 
+
 }
 
 const styles = StyleSheet.create({
   titleText: {
     fontSize: 20, 
-    fontWeight: 'bold'
+    fontFamily: 'DepartureMono'
   },
   loginInput: {
     height: 40,
@@ -141,16 +152,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'black',
     padding: 10,
+    fontFamily: 'DepartureMono'
   },
   initButtonContainer: {
     margin: 100, 
     flexDirection : 'row',
     justifyContent: 'space-between',
+    fontFamily: 'DepartureMono',
   },
   errorContainer: {
     backgroundColor: "red",
     width: 280, 
     height: 40,
+    fontFamily: 'DepartureMono'
   }
 
 }); 
