@@ -54,7 +54,7 @@ export default function Index() {
     credentials: "include"
     });
     console.log(request)
-    fetch(request).then(result => {
+    fetch(request).then((result) => {
       print("status: "+result.status)
       if (result.status == 201) {
         setErrorMode(false)
