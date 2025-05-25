@@ -1,6 +1,6 @@
 
 import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button, Pressable, Image, FlatList} from "react-native";
-
+import * as ImagePicker from 'expo-image-picker'
 import React, {useRef, useEffect, useState} from 'react'
 if (__DEV__) {
   require("./ReactotronConfig");
@@ -14,58 +14,128 @@ function CreatePostcardInterface ({props}) {
   const username = "!ERROR"
   const [side, setSide] = useState(false); // true for backside of card
   const [stamp, setStamp] = useState("!NOSTAMP");
+  const [stampImg, setStampImg] = useState("!NOIMG");
   const [stampPickerMode, setStampPickerMode] = useState(false);
-  const [stampNames, setStampNames] = useState([]); 
-  const [stampLinks, setStampLinks] = useState([]);
+  const [stamps, setStamps] = useState([]); 
   const [authToken, setAuthToken] = useState(props.authToken);
-  console.log("imglink "+stampLinks)
-  if (!stampPickerMode) return(<KeyboardAvoidingView style={styles.postCardView}>
-   <Pressable onPress={() => {setStampPickerMode(true)}}>
+  const [frontText, setFrontText] = useState(""); 
+  const [backText, setBackText] = useState(""); 
+  //const [frontImgIncluded, setFrontImgIncluded] = useState(false); //controls whether or not an image is included on the front of the postcard 
+  const [postImage, setPostImage] = useState("!NOIMG");
+  const submitPost = () => { 
+    const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}; 
+    const request = new Request("http://192.168.1.79:3000/newPostCard", {
+      method: "POST",
+      headers: reqHeaders,
+      body: {
+        frontText: frontText,
+        backText: backText, 
+        image: postImage
+      }
+    })
+    fetch(request).then((result) => {console.log(result.text())}); 
+  }
+  //below: default state of the component, first side and not in stamp picker mode
+  if (!stampPickerMode && !side) return(<KeyboardAvoidingView style={styles.postCardView}     behavior={'padding'}>
+   <Pressable  onPress={() => {setStampPickerMode(true)}}>
     <View style={{
       flex: 0,
-      height: "45%",
+      height: 100,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       borderTopLeftRadius: 10,
       borderTopRightRadius: 10,
-      backgroundColor: "#dbdbdb"
-    }}>
+      backgroundColor: "#dbdbdb",
+     //percentage may cause weird gaps
+    }}> 
     <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
-    <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}>Press to change stamp.</Text>
-  
-     <Image source={{ uri: "https://res.cloudinary.com/dksba0x3e/image/upload/v1748049719/addStamp_xpogun.png"}} style={styles.stampStyle}/>
-
+    <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> Press to change stamp.</Text>
+     <Image source={stamp == "!NOSTAMP" ? { uri: "https://res.cloudinary.com/dksba0x3e/image/upload/v1748049719/addStamp_xpogun.png"} : {uri: stampImg}} style={styles.stampStyle}/>
     </View>
     </Pressable>
+    {postImage == "!NOIMG" ? null : <Image source={{uri: `data:image/jpeg;base64,${postImage}`}} style={{width: "100%", height: "50%"}}/>} 
+  <TextInput
+style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "white",  fontFamily: "DepartureMono"} : {width: "100%", height: "20%", backgroundColor: "white",  fontFamily: "DepartureMono"}}
+
+    onChangeText={setFrontText}
+    value={frontText}
+    textAlignVertical="top"
+    multiline={true}/>
+    <View style={{flex:0, flexDirection: "row", width: "100%", height: "10%", backgroundColor: "white", alignItems: "center"}}>
+      <Pressable onPress={() => {console.log("post button pressed")}}>
+      <Text style={{fontFamily: "DepartureMono", color: "cyan"}}>post</Text>
+      </Pressable>
+      <Pressable onPress={ async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4,3],
+          quality:1,
+          base64: true
+        });
+        //console.log(result.assets[0].base64);
+        if (!result.cancelled) setPostImage(result.assets[0].base64);
+        console.log(postImage);
+      }}>
+        <Text style={{fontFamily: "DepartureMono", color:"#dbdbdb", marginLeft: 10}}>add image</Text>
+      </Pressable>
+      <Pressable onPress={() => {setSide(true)}}>
+      <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb" }}> edit other side --></Text>
+      </Pressable>
+    </View>
   </KeyboardAvoidingView>)
+  //backside display below 
+  if (!stampPickerMode && side) return(
+    <KeyboardAvoidingView style={styles.postCardView} behavior={'padding'}>
+     <TextInput
+    style={{width: "100%", height: "83.5%", backgroundColor: "white",  fontFamily: "DepartureMono", marginTop: 20}}
+      onChangeText={setBackText}
+      value={backText}
+      textAlignVertical="top"
+      multiline={true}/>    
+    <View style={{flex:0, flexDirection: "row", width: "100%", height: "10%", backgroundColor: "white", alignItems: "center"}}>
+      <Pressable onPress={() => {console.log("post button pressed")}}>
+        <Text style={{fontFamily: "DepartureMono", color: "cyan"}}>post</Text>
+      </Pressable>
+
+      <Pressable onPress={() => {setSide(false)}}>
+        <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb", marginLeft: 5}}> edit other side --></Text>
+      </Pressable>
+    </View>
+
+    </KeyboardAvoidingView>
+  )
+  //handler for stamp picker below 
   else {
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
     const request = new Request("http://192.168.1.79:3000/getStampBook", {
       method: "GET",
       headers: reqHeaders
     });
-    console.log("namearray" + stampNames)
-    console.log("linkarray" + stampLinks)
- if (stampNames.length < 1) fetch(request).then((response) => {
+    //console.log("namearray" + stampNames)
+    //console.log("linkarray" + stampLinks)
+    
+ if (stamps.length < 1) fetch(request).then((response) => {
       return response.text(); 
     }).then((text) => {
+      console.log(text)
       const rJSON = JSON.parse(text); 
-      setStampLinks(rJSON.imgurls); 
-      setStampNames(rJSON.names);
+      setStamps(rJSON)
     }).catch((error) => {console.log(error)});
     return(
       <KeyboardAvoidingView style={styles.postCardView}>
-        <FlatList style={{height: "100%", width: "100%"}}>
-          {stampLinks.map((link, index) => {
-            console.log(link)
-            return(
-
-            <Image source={{uri: link}} style={styles.stampStyle}/>
-       
-            )
-          })}
-        </FlatList>
+        <FlatList
+          data={stamps}
+          renderItem={({item}) =>
+            <View style={{ height: 250, width: "200%", flex: 0, justifyContent: "center"}}>
+              <Text style={{fontFamily: 'DepartureMono'}}>{item.prettyName}</Text>
+              <Pressable onPress={() => {setStamp(item.prettyName); setStampImg(item.imgLink); setStampPickerMode(false)}}>
+                <Image source={{ uri: item.imgLink}} style={styles.stampStyle}/>
+              </Pressable>
+            </View>}
+          keyExtractor={item => item.prettyName}
+        />
       </KeyboardAvoidingView> 
     )
   }
@@ -230,7 +300,12 @@ const styles = StyleSheet.create({
     height: "80%",
     width: "90%",
     backgroundColor: "white",
-    borderRadius: 10
+    borderRadius: 10,
+    justifyContent: "flex-start",
+    alignContent: "flex-start",
+    margin: -200
+
+    
   },
   stampStyle: {
     height: "90%",
