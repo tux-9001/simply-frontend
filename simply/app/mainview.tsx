@@ -1,5 +1,5 @@
 
-import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button, Pressable, Image} from "react-native";
+import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button, Pressable, Image, FlatList} from "react-native";
 
 import React, {useRef, useEffect, useState} from 'react'
 if (__DEV__) {
@@ -15,6 +15,10 @@ function CreatePostcardInterface ({props}) {
   const [side, setSide] = useState(false); // true for backside of card
   const [stamp, setStamp] = useState("!NOSTAMP");
   const [stampPickerMode, setStampPickerMode] = useState(false);
+  const [stampNames, setStampNames] = useState([]); 
+  const [stampLinks, setStampLinks] = useState([]);
+  const [authToken, setAuthToken] = useState(props.authToken);
+  console.log("imglink "+stampLinks)
   if (!stampPickerMode) return(<KeyboardAvoidingView style={styles.postCardView}>
    <Pressable onPress={() => {setStampPickerMode(true)}}>
     <View style={{
@@ -35,11 +39,36 @@ function CreatePostcardInterface ({props}) {
     </View>
     </Pressable>
   </KeyboardAvoidingView>)
-  else return(
-    <KeyboardAvoidingView style={styles.postCardView}>
-      
-    </KeyboardAvoidingView>
-  )
+  else {
+    const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
+    const request = new Request("http://192.168.1.79:3000/getStampBook", {
+      method: "GET",
+      headers: reqHeaders
+    });
+    console.log("namearray" + stampNames)
+    console.log("linkarray" + stampLinks)
+ if (stampNames.length < 1) fetch(request).then((response) => {
+      return response.text(); 
+    }).then((text) => {
+      const rJSON = JSON.parse(text); 
+      setStampLinks(rJSON.imgurls); 
+      setStampNames(rJSON.names);
+    }).catch((error) => {console.log(error)});
+    return(
+      <KeyboardAvoidingView style={styles.postCardView}>
+        <FlatList style={{height: "100%", width: "100%"}}>
+          {stampLinks.map((link, index) => {
+            console.log(link)
+            return(
+
+            <Image source={{uri: link}} style={styles.stampStyle}/>
+       
+            )
+          })}
+        </FlatList>
+      </KeyboardAvoidingView> 
+    )
+  }
 }
 function ScrapbookInterface ({props}) {
   // interface to view a scrapbook - a user's collection of posts 
@@ -136,7 +165,7 @@ export default function Mainview ({props}) {
        backgroundColor: "#c1c4c9"
 
      }}>
-        {viewMode === "createpostcard" ? <CreatePostcardInterface props={{username: username}}/> : null}
+        {viewMode === "createpostcard" ? <CreatePostcardInterface props={{username: username, authToken: authToken}}/> : null}
         {viewMode === "mainfeed" ? <MainFeed/> : null}
         {viewMode === "stampcollection" ? <StampCollection/> : null}
         {viewMode === "scrapbook" ? <ScrapbookInterface/> : null}

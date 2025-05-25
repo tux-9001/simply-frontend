@@ -32,10 +32,15 @@
           }
         }
       ]
-
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "71dfd6aa-d2ee-4a29-ba93-8819cfe43186"
+      }
+    },
+    "owner": "tux9001"
   }
 }
