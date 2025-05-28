@@ -19,7 +19,8 @@ function CreatePostcardInterface ({props}) {
   const [stamps, setStamps] = useState([]); 
   const [authToken, setAuthToken] = useState(props.authToken);
   const [frontText, setFrontText] = useState(""); 
-  const [backText, setBackText] = useState(""); 
+  const [backText, setBackText] = useState("");
+  const [postCompleted, setPostCompleted] = useState(false);
   //const [frontImgIncluded, setFrontImgIncluded] = useState(false); //controls whether or not an image is included on the front of the postcard 
   const [postImage, setPostImage] = useState("!NOIMG");
   const submitPost = () => { 
@@ -27,14 +28,22 @@ function CreatePostcardInterface ({props}) {
     const request = new Request("http://192.168.1.79:3000/newPostCard", {
       method: "POST",
       headers: reqHeaders,
-      body: {
+      body: JSON.stringify({
         frontText: frontText,
         backText: backText, 
-        image: postImage
-      }
+        image: postImage,
+        stamp: stampImg 
+      })
     })
-    fetch(request).then((result) => {console.log(result.text())}); 
+    fetch(request).then((result) => {console.log("status: "+result.status); 
+                        if (result.status == 201) setPostCompleted(true)})
+    console.log(postCompleted.toString())
   }
+  if (postCompleted) return(
+    <KeyboardAvoidingView style={styles.postCardView}>
+    <Text style={{fontFamily: "DepartureMono", fontSize: 25}}>Successfully posted!  </Text>
+    </KeyboardAvoidingView>
+  )
   //below: default state of the component, first side and not in stamp picker mode
   if (!stampPickerMode && !side) return(<KeyboardAvoidingView style={styles.postCardView}     behavior={'padding'}>
    <Pressable  onPress={() => {setStampPickerMode(true)}}>
@@ -63,7 +72,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
     textAlignVertical="top"
     multiline={true}/>
     <View style={{flex:0, flexDirection: "row", width: "100%", height: "10%", backgroundColor: "white", alignItems: "center"}}>
-      <Pressable onPress={() => {console.log("post button pressed")}}>
+      <Pressable onPress={submitPost}>
       <Text style={{fontFamily: "DepartureMono", color: "cyan"}}>post</Text>
       </Pressable>
       <Pressable onPress={ async () => {
@@ -71,7 +80,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
           mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [4,3],
-          quality:1,
+          quality:.5,
           base64: true
         });
         //console.log(result.assets[0].base64);
