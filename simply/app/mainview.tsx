@@ -32,7 +32,7 @@ function CreatePostcardInterface ({props}) {
         frontText: frontText,
         backText: backText, 
         image: postImage,
-        stamp: stampImg 
+        stamp: stamp 
       })
     })
     fetch(request).then((result) => {console.log("status: "+result.status); 
@@ -139,7 +139,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
           renderItem={({item}) =>
             <View style={{ height: 250, width: "200%", flex: 0, justifyContent: "center"}}>
               <Text style={{fontFamily: 'DepartureMono'}}>{item.prettyName}</Text>
-              <Pressable onPress={() => {setStamp(item.prettyName); setStampImg(item.imgLink); setStampPickerMode(false)}}>
+              <Pressable onPress={() => {setStamp(item.prettyName); setStampImg(item.imgLink); console.log("stamp:"+stamp); setStampPickerMode(false)}}>
                 <Image source={{ uri: item.imgLink}} style={styles.stampStyle}/>
               </Pressable>
             </View>}
@@ -150,7 +150,56 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
   }
 }
 function ScrapbookInterface ({props}) {
-  // interface to view a scrapbook - a user's collection of posts 
+  const [scrapbook, setScrapbook] = useState([]);
+  const [authToken, setAuthToken] = useState(props.authToken);
+  const [username, setUsername] = useState(props.username);
+  const [scrapbookLoaded, setScrapbookLoaded] = useState(false);
+  const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
+  const req = new Request("http://192.168.1.79:3000/getScrapBook", {
+    method: "GET",
+    headers: reqHeaders,
+  });
+  if (!scrapbookLoaded) fetch(req).then((response) => {
+    setScrapbook(response);
+    console.log("Resp "+response);
+    setScrapbookLoaded(true);
+    return response.text(); 
+  }).then((text) => {
+    console.log("Text: "+text);
+    setScrapbook(JSON.parse(text))
+    for (let index = 0; index < scrapbook.length; index++) {
+      console.log(scrapbook[index]);      
+    }
+  }).catch((error) => {console.log(error)});
+
+  return(
+    <KeyboardAvoidingView style={[styles.ScrapbookView]}>
+      <Text style={{fontFamily: "DepartureMono", fontSize: 20, marginBottom: 20}}>{username}'s scrapbook </Text>
+      <FlatList data={scrapbook} horizontal={true} renderItem={({item}) => <KeyboardAvoidingView style={[styles.postCardView, {width: 350, marginLeft: 20}]}>
+  <View style={{
+      flex: 0,
+      height: 100,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderTopLeftRadius: 10,
+      borderTopRightRadius: 10,
+      backgroundColor: "#dbdbdb",
+     //percentage may cause weird gaps
+    }}> 
+    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{username}</Text>
+    <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> Press to change stamp.</Text>
+     <Image source={{uri: item.stampImgUrl}} style={styles.stampStyle}/>
+
+    </View>
+    <Text> {item.frontText} </Text>
+
+
+
+      </KeyboardAvoidingView>} keyExtractor={item => item._id}/>
+    </KeyboardAvoidingView>
+   )
+
 }
 function StampCollection ({props}) {
   // interface to view a users stamp collection 
@@ -166,7 +215,7 @@ export default function Mainview ({props}) {
   const [username, setUserName] = useState("!error");
   const [uNameLoaded, setUnameLoaded] = useState(false);
   const [authToken, setAuthToken] = useState(props.authToken); 
-  console.log(props.authToken)
+  console.log("Username: "+props.username)
   const fetchUsername = () => {
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
     const req = new Request("http://192.168.1.79:3000/user", {
@@ -186,6 +235,7 @@ export default function Mainview ({props}) {
   // const ident = props.token; // The JWT token used for auth, sent with each request
    const [viewMode, setViewMode] = useState("mainfeed")
    const MainFeedPressed = () => {
+      console.log("mainfeed")
       setViewMode("mainfeed")
    }
    const CreatePostcardPressed = () => {
@@ -194,11 +244,11 @@ export default function Mainview ({props}) {
       setViewMode("createpostcard")
    }
    const StampCollectionPressed = () => {
-
+      console.log("Stampcollection")
       setViewMode("stampcollection")
    }
    const ScrapbookPressed = () => {
-     
+      console.log("Scrapbook") 
       setViewMode("scrapbook")
    }
    return(
@@ -247,7 +297,7 @@ export default function Mainview ({props}) {
         {viewMode === "createpostcard" ? <CreatePostcardInterface props={{username: username, authToken: authToken}}/> : null}
         {viewMode === "mainfeed" ? <MainFeed/> : null}
         {viewMode === "stampcollection" ? <StampCollection/> : null}
-        {viewMode === "scrapbook" ? <ScrapbookInterface/> : null}
+        {viewMode === "scrapbook" ? <ScrapbookInterface props={{username: username, authToken: authToken}}/> : null}
      </KeyboardAvoidingView> 
      </View>
    )
@@ -306,16 +356,27 @@ const styles = StyleSheet.create({
   },
   postCardView: {
     flex: 0, 
-    height: "80%",
-    width: "90%",
+    height: 600,
+    width: 350,
     backgroundColor: "white",
     borderRadius: 10,
     justifyContent: "flex-start",
     alignContent: "flex-start",
-    margin: -200
 
-    
   },
+  ScrapbookView: {
+    flex: 0, 
+    height: "98%",
+    width: "98%",
+    backgroundColor: "#f2d89b",
+    borderRadius: 10,
+    justifyContent: "center",
+    alignContent: "flex-start",
+    margin: -200,
+    borderColor: 'brown',
+    borderWidth: 10,
+    flexDirection: 'column'
+      },
   stampStyle: {
     height: "90%",
     width: "25%",
