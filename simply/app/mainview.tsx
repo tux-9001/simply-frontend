@@ -25,7 +25,7 @@ function CreatePostcardInterface ({props}) {
   const [postImage, setPostImage] = useState("!NOIMG");
   const submitPost = () => { 
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}; 
-    const request = new Request("http://192.168.1.79:3000/newPostCard", {
+    const request = new Request("http://192.168.1.38:3000/newPostCard", {
       method: "POST",
       headers: reqHeaders,
       body: JSON.stringify({
@@ -118,7 +118,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
   //handler for stamp picker below 
   else {
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
-    const request = new Request("http://192.168.1.79:3000/getStampBook", {
+    const request = new Request("http://192.168.1.38:3000/getStampBook", {
       method: "GET",
       headers: reqHeaders
     });
@@ -149,13 +149,44 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
     )
   }
 }
+function DisplayPost({props}) {
+  const [stampImgUrl, setStampImgUrl] = props.stampImgUrl; 
+  const [frontText, setFrontText] = props.frontText; 
+  const [backText, setBackText] = props.backText; 
+  const [imageURL, setimageURL] = props.imageURL; 
+  if (imageURL != '!NOIMG') return(
+    <View style={styles.postCardView}>
+      <View style={{
+      flex: 0,
+      height: 100,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderTopLeftRadius: 10,
+      borderTopRightRadius: 10,
+      backgroundColor: "#dbdbdb",
+     //percentage may cause weird gaps
+    }}> 
+    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
+    <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> This is a stamp. </Text>
+     <Image source={stamp == "!NOSTAMP" ? { uri: "https://res.cloudinary.com/dksba0x3e/image/upload/v1748049719/addStamp_xpogun.png"} : {uri: stampImg}} style={styles.stampStyle}/>
+    </View>
+
+    </View> 
+  )
+  // return correct formatting if post has an image 
+  else return(
+    <View style={styles.postCardView}>
+    </View>
+  ) // return correct formatting if no image 
+  }
 function ScrapbookInterface ({props}) {
   const [scrapbook, setScrapbook] = useState([]);
   const [authToken, setAuthToken] = useState(props.authToken);
   const [username, setUsername] = useState(props.username);
   const [scrapbookLoaded, setScrapbookLoaded] = useState(false);
   const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
-  const req = new Request("http://192.168.1.79:3000/getScrapBook", {
+  const req = new Request("http://192.168.1.38:3000/getScrapBook", {
     method: "GET",
     headers: reqHeaders,
   });
@@ -173,31 +204,8 @@ function ScrapbookInterface ({props}) {
   }).catch((error) => {console.log(error)});
 
   return(
-    <KeyboardAvoidingView style={[styles.ScrapbookView]}>
-      <Text style={{fontFamily: "DepartureMono", fontSize: 20, marginBottom: 20}}>{username}'s scrapbook </Text>
-      <FlatList data={scrapbook} horizontal={true} renderItem={({item}) => <KeyboardAvoidingView style={[styles.postCardView, {width: 350, marginLeft: 20}]}>
-  <View style={{
-      flex: 0,
-      height: 100,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      borderTopLeftRadius: 10,
-      borderTopRightRadius: 10,
-      backgroundColor: "#dbdbdb",
-     //percentage may cause weird gaps
-    }}> 
-    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{username}</Text>
-    <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> Press to change stamp.</Text>
-     <Image source={{uri: item.stampImgUrl}} style={styles.stampStyle}/>
-
-    </View>
-    <Text> {item.frontText} </Text>
-
-
-
-      </KeyboardAvoidingView>} keyExtractor={item => item._id}/>
-    </KeyboardAvoidingView>
+     <KeyboardAvoidingView> 
+     </KeyboardAvoidingView>
    )
 
 }
@@ -218,7 +226,7 @@ export default function Mainview ({props}) {
   console.log("Username: "+props.username)
   const fetchUsername = () => {
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
-    const req = new Request("http://192.168.1.79:3000/user", {
+    const req = new Request("http://192.168.1.38:3000/user", {
       method: "GET",
       headers: reqHeaders
     });

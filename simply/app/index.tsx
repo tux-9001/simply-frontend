@@ -47,7 +47,7 @@ export default function Index() {
    const reqHeaders = new Headers()
    reqHeaders.append("Content-Type", "application/json"); 
    //tell the server content type 
-   const request = new Request("http://192.168.1.79:3000/register", {
+   const request = new Request("http://192.168.1.38:3000/register", {
     method: "POST", 
     body: JSON.stringify({email: email.toString(), username: username.toString(), password: password.toString()}),
     headers: reqHeaders, 
@@ -69,7 +69,7 @@ export default function Index() {
    const reqHeaders = new Headers()
    reqHeaders.append("Content-Type", "application/json"); 
    //tell the server content type 
-   const request = new Request("http://192.168.1.79:3000/login", {
+   const request = new Request("http://192.168.1.38:3000/login", {
     method: "POST", 
     body: JSON.stringify({email: email.toString(), password: password.toString()}),
     headers: reqHeaders, 
@@ -102,7 +102,7 @@ export default function Index() {
         height: "100%"        
       }}
     >
-    <Text style={styles.titleText}>Hello! Welcome to Simply :)</Text>
+    <Text style={styles.titleText}>Hello! Welcome to Simply :)   </Text>
     <TextInput
       style={styles.loginInput}
       value={email}
@@ -142,8 +142,12 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   titleText: {
-    fontSize: 20, 
-    fontFamily: 'DepartureMono'
+    fontSize: 17, 
+    fontFamily: 'DepartureMono',
+    textBreakStrategy: 'simple',
+    letterSpacing: -0.4,
+    height: 20,
+    width: 300
   },
   loginInput: {
     height: 40,
