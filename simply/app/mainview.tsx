@@ -1,4 +1,3 @@
-
 import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button, Pressable, Image, FlatList} from "react-native";
 import * as ImagePicker from 'expo-image-picker'
 import React, {useRef, useEffect, useState} from 'react'
@@ -25,7 +24,7 @@ function CreatePostcardInterface ({props}) {
   const [postImage, setPostImage] = useState("!NOIMG");
   const submitPost = () => { 
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}; 
-    const request = new Request("http://192.168.1.38:3000/newPostCard", {
+    const request = new Request("http://192.168.1.26:3000/newPostCard", {
       method: "POST",
       headers: reqHeaders,
       body: JSON.stringify({
@@ -118,7 +117,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
   //handler for stamp picker below 
   else {
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
-    const request = new Request("http://192.168.1.38:3000/getStampBook", {
+    const request = new Request("http://192.168.1.26:3000/getStampBook", {
       method: "GET",
       headers: reqHeaders
     });
@@ -150,11 +149,14 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
   }
 }
 function DisplayPost({props}) {
-  const [stampImgUrl, setStampImgUrl] = props.stampImgUrl; 
-  const [frontText, setFrontText] = props.frontText; 
-  const [backText, setBackText] = props.backText; 
-  const [imageURL, setimageURL] = props.imageURL; 
-  if (imageURL != '!NOIMG') return(
+  const stampImgUrl = props.stampImgUrl; 
+  const frontText = props.frontText; 
+  const backText = props.backText; 
+  const imageURL = props.imageURL; 
+  const username = props.username;
+  const [side, setSide] = useState(false); // true for backside of card
+  console.log("Stamp:" + stampImgUrl);
+  if (imageURL == '!NOIMG') return(
     <View style={styles.postCardView}>
       <View style={{
       flex: 0,
@@ -169,14 +171,40 @@ function DisplayPost({props}) {
     }}> 
     <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
     <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> This is a stamp. </Text>
-     <Image source={stamp == "!NOSTAMP" ? { uri: "https://res.cloudinary.com/dksba0x3e/image/upload/v1748049719/addStamp_xpogun.png"} : {uri: stampImg}} style={styles.stampStyle}/>
+     <Image source={{uri: stampImgUrl}} style={styles.stampStyle}/>
     </View>
-
+    <Text style={{fontFamily: "DepartureMono", fontSize: 20, marginLeft: "2%", marginTop: 10, height: "70%"}}>{side ? backText : frontText}</Text>
+    <View style={{flex: 0, flexDirection: "row", width: "100%", height: "10%", backgroundColor: "white", alignItems: "center"}}>
+      <Pressable onPress={() => {setSide(!side)}}>
+        <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb" }}> view other side --> </Text>
+      </Pressable>
+      </View>
     </View> 
   )
-  // return correct formatting if post has an image 
   else return(
     <View style={styles.postCardView}>
+      <View style={{
+          flex: 0,
+          height: 100,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderTopLeftRadius: 10,
+          borderTopRightRadius: 10,
+          backgroundColor: "#dbdbdb",
+     //percentage may cause weird gaps
+         }}> 
+        <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
+        <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> This post has an image!</Text>
+        <Image source={{uri: stampImgUrl}} style={styles.stampStyle}/>
+      </View>
+      {!side ? <Image source={{uri: imageURL}} style={{width: "100%", height: 300}}/> : null}
+      <Text style={!side ? {fontFamily: "DepartureMono", fontSize: 20, marginLeft: "2%", marginTop: 10, height: "25%"} : {fontFamily: "DepartureMono", fontSize: 20, marginLeft: "2%", marginTop: 10, height: "75%"}}>{side ? backText : frontText}</Text>
+      <View style={{flex: 0, flexDirection: "row", width: "100%", height: "5%", backgroundColor: "white", alignItems: "center"}}>
+        <Pressable onPress={() => {setSide(!side)}}>
+          <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb" }}> view other side --> </Text>
+        </Pressable>
+      </View>
     </View>
   ) // return correct formatting if no image 
   }
@@ -184,27 +212,46 @@ function ScrapbookInterface ({props}) {
   const [scrapbook, setScrapbook] = useState([]);
   const [authToken, setAuthToken] = useState(props.authToken);
   const [username, setUsername] = useState(props.username);
+  const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [scrapbookLoaded, setScrapbookLoaded] = useState(false);
-  const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
-  const req = new Request("http://192.168.1.38:3000/getScrapBook", {
-    method: "GET",
-    headers: reqHeaders,
-  });
-  if (!scrapbookLoaded) fetch(req).then((response) => {
-    setScrapbook(response);
-    console.log("Resp "+response);
-    setScrapbookLoaded(true);
-    return response.text(); 
-  }).then((text) => {
-    console.log("Text: "+text);
-    setScrapbook(JSON.parse(text))
-    for (let index = 0; index < scrapbook.length; index++) {
-      console.log(scrapbook[index]);      
+
+  useEffect(() => {
+    if (!scrapbookLoaded) {
+      const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
+      const req = new Request("http://192.168.1.26:3000/getScrapBook", {
+        method: "GET",
+        headers: reqHeaders,
+      });
+      fetch(req)
+        .then((response) => response.json())
+        .then((data) => {
+          setScrapbook(data);
+          setScrapbookLoaded(true);
+          for (let index = 0; index < data.length; index++) {
+            console.log("sbi:" + data[index].stampImgUrl);
+          }
+        })
+        .catch((error) => console.log(error));
     }
-  }).catch((error) => {console.log(error)});
+  }, [scrapbookLoaded, authToken, username]);
 
   return(
-     <KeyboardAvoidingView> 
+     <KeyboardAvoidingView>
+     {scrapbook.length > 0 ? <DisplayPost props={{
+      frontText: scrapbook[currentPostIndex].frontText,
+       backText: scrapbook[currentPostIndex].backText,
+        imageURL: scrapbook[currentPostIndex].imageURL,
+         stampImgUrl: scrapbook[currentPostIndex].stampImgUrl, username: username}}/>
+      : <Text> no </Text>}
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}> 
+        {currentPostIndex > 0 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex - 1)}>
+           <Text style={{fontFamily: "DepartureMono", marginLeft: -10}}> ← previous post</Text></Pressable>
+           :<Text style={{fontFamily: "DepartureMono", marginLeft: -20}}> no previous posts</Text>}
+      
+        {currentPostIndex < scrapbook.length - 1 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex + 1)}> 
+          <Text style={{fontFamily: "DepartureMono", marginLeft: 10}}>next post →</Text></Pressable>
+          :<Text style={{fontFamily: "DepartureMono", marginLeft: 20}}> no more posts</Text>}
+        </View> 
      </KeyboardAvoidingView>
    )
 
@@ -226,12 +273,11 @@ export default function Mainview ({props}) {
   console.log("Username: "+props.username)
   const fetchUsername = () => {
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
-    const req = new Request("http://192.168.1.38:3000/user", {
+    const req = new Request("http://192.168.1.26:3000/user", {
       method: "GET",
       headers: reqHeaders
     });
-  fetch(req).then((response) => {
-      //console.log("Resp:"+response.text());
+    fetch(req).then((response) => {
       return response.text();
     }).then((text) => {
       const rJSON = JSON.parse(text);
@@ -239,6 +285,10 @@ export default function Mainview ({props}) {
       setUserName(rJSON.username) 
     }).catch((error) => {console.log(error)});
   }
+
+  React.useEffect(() => {
+    fetchUsername();
+  }, [authToken]);
 
   // const ident = props.token; // The JWT token used for auth, sent with each request
    const [viewMode, setViewMode] = useState("mainfeed")
@@ -391,4 +441,4 @@ const styles = StyleSheet.create({
     resizeMode: "stretch"
   }
 
-}); 
+});

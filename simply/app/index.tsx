@@ -39,7 +39,7 @@ export default function Index() {
     setLoginMode(false)
   }
   const sendAuthReq = () => {
-    print("Lm: "+loginMode)
+    //print("Lm: "+loginMode)
    {loginMode ? sendLoginRequest : sendRegisterRequest}
   }
   const sendRegisterRequest = () => {
@@ -47,7 +47,7 @@ export default function Index() {
    const reqHeaders = new Headers()
    reqHeaders.append("Content-Type", "application/json"); 
    //tell the server content type 
-   const request = new Request("http://192.168.1.38:3000/register", {
+   const request = new Request("http://192.168.1.26:3000/register", {
     method: "POST", 
     body: JSON.stringify({email: email.toString(), username: username.toString(), password: password.toString()}),
     headers: reqHeaders, 
@@ -55,7 +55,7 @@ export default function Index() {
     });
     console.log(request)
     fetch(request).then((result) => {
-      print("status: "+result.status)
+     // print("status: "+result.status)
       if (result.status == 201) {
         setErrorMode(false)
         switchLoginMode(); 
@@ -69,7 +69,7 @@ export default function Index() {
    const reqHeaders = new Headers()
    reqHeaders.append("Content-Type", "application/json"); 
    //tell the server content type 
-   const request = new Request("http://192.168.1.38:3000/login", {
+   const request = new Request("http://192.168.1.26:3000/login", {
     method: "POST", 
     body: JSON.stringify({email: email.toString(), password: password.toString()}),
     headers: reqHeaders, 
@@ -87,7 +87,7 @@ export default function Index() {
     }).then((data) => {
       console.log("Token: "+data.token)
       setAuthToken(data.token)
-      print("Set token OK")
+      //print("Set token OK")
     }).catch(error => {setErrorMode(true)}) // enable error banner if server throws back an error 
 
   }
@@ -171,4 +171,4 @@ const styles = StyleSheet.create({
     fontFamily: 'DepartureMono'
   }
 
-}); 
+});
