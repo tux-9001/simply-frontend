@@ -2,6 +2,7 @@ import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Butt
 import * as ImagePicker from 'expo-image-picker'
 import React, {useRef, useEffect, useState} from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationIndependentTree, useLinkProps } from "@react-navigation/native";
 
 const Tab = createBottomTabNavigator();
 
@@ -14,19 +15,22 @@ function MainFeed ({props}) {
   return(<Text>Hello</Text>)
 }
 
-function CreatePostcardInterface ({props}) {
+function CreatePostcardInterface ({ route, navigation }) {
   const username = "!ERROR"
   const [side, setSide] = useState(false); // true for backside of card
   const [stamp, setStamp] = useState("!NOSTAMP");
   const [stampImg, setStampImg] = useState("!NOIMG");
   const [stampPickerMode, setStampPickerMode] = useState(false);
   const [stamps, setStamps] = useState([]); 
-  const [authToken, setAuthToken] = useState(props.authToken);
+  const authToken = route.params.authToken; // auth token used for posting
   const [frontText, setFrontText] = useState(""); 
   const [backText, setBackText] = useState("");
   const [postCompleted, setPostCompleted] = useState(false);
   //const [frontImgIncluded, setFrontImgIncluded] = useState(false); //controls whether or not an image is included on the front of the postcard 
   const [postImage, setPostImage] = useState("!NOIMG");
+  const accessMainFeed = () => {
+    navigation.navigate('MainFeed');
+  }
   const submitPost = () => { 
     const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}; 
     const request = new Request("http://192.168.1.26:3000/newPostCard", {
@@ -40,14 +44,10 @@ function CreatePostcardInterface ({props}) {
       })
     })
     fetch(request).then((result) => {console.log("status: "+result.status); 
-                        if (result.status == 201) setPostCompleted(true)})
-    console.log(postCompleted.toString())
+                        if (result.status == 201) navigation.navigate('MainFeed');}) 
+    console.log(postCompleted.toString()) // to navigate to another component wrap navigate call in event handler 
   }
-  if (postCompleted) return(
-    <KeyboardAvoidingView style={styles.postCardView}>
-    <Text style={{fontFamily: "DepartureMono", fontSize: 25}}>Successfully posted!  </Text>
-    </KeyboardAvoidingView>
-  )
+
   //below: default state of the component, first side and not in stamp picker mode
   if (!stampPickerMode && !side) return(<KeyboardAvoidingView style={styles.postCardView}     behavior={'padding'}>
    <Pressable  onPress={() => {setStampPickerMode(true)}}>
@@ -62,7 +62,7 @@ function CreatePostcardInterface ({props}) {
       backgroundColor: "#dbdbdb",
      //percentage may cause weird gaps
     }}> 
-    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
+    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{route.params.username}</Text>
     <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> Press to change stamp.</Text>
      <Image source={stamp == "!NOSTAMP" ? { uri: "https://res.cloudinary.com/dksba0x3e/image/upload/v1748049719/addStamp_xpogun.png"} : {uri: stampImg}} style={styles.stampStyle}/>
     </View>
@@ -338,8 +338,33 @@ function UserProfile ({props}) {
 function StampStore ({props}) {
   // Function to view the stamp store 
 }
-function AppTabBar({ navigation }) {
-  return ()
+function AppTabBar({ navigation, state, username, authToken }) {
+  console.log("user:" + username);
+  console.log("Auth token: " + authToken);
+  return (
+    <View style={styles.bottomCtrlBar}>
+     {/*Below: Bottom control bar logic */}
+      <View style={styles.bottomCtrlPressable}>
+      <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
+        <Image style={styles.ctlBarImg} source={require('../assets/images/mainfeed.png')} /> 
+      </Pressable>
+     </View>
+      <View style={styles.bottomCtrlPressable}>
+      <Pressable onPress={() => {navigation.navigate('CreatePostcard', {authToken: authToken, username: username});}}>
+        <Image style={styles.ctlBarImg} source={require('../assets/images/createpostcard.png')} /> 
+      </Pressable>
+     </View>
+      <View style={styles.bottomCtrlPressable}>
+      <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
+        <Image style={styles.ctlBarImg} source={require('../assets/images/stampcollection.png')} /> 
+      </Pressable>
+     </View>
+           <View style={styles.bottomCtrlPressable}>
+      <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
+        <Image style={styles.ctlBarImg} source={require('../assets/images/myscrapbook.png')} /> 
+      </Pressable>
+     </View>
+     </View> )
 }
 //TODO: Implement the interface for this func
 export default function Mainview ({props}) { 
@@ -385,6 +410,7 @@ export default function Mainview ({props}) {
       console.log("Scrapbook") 
       setViewMode("scrapbook")
    }
+   /** 
    return(
 
     <View style={{
@@ -395,30 +421,7 @@ export default function Mainview ({props}) {
         height: "100%",
         backgroundColor: 'white'
       }}>
-     <View style={styles.bottomCtrlBar}>
-     {/*Below: Bottom control bar logic */}
-      <View style={viewMode === "mainfeed" ? [styles.bottomCtrlPressable, styles.pressableLit] : [styles.bottomCtrlPressable] }>
-      <Pressable onPress={MainFeedPressed}>
-        <Image style={styles.ctlBarImg} source={require('../assets/images/mainfeed.png')} /> 
-      </Pressable>
-      </View> 
-      <View style={viewMode === "createpostcard" ? [styles.bottomCtrlPressable, styles.pressableLit] : [styles.bottomCtrlPressable] }>
-       <Pressable onPress={CreatePostcardPressed}>
-        <Image style={styles.ctlBarImg} source={require('../assets/images/createpostcard.png')} /> 
-      </Pressable>     
-      </View> 
-      <View style={viewMode === "stampcollection" ? [styles.bottomCtrlPressable, styles.pressableLit] : [styles.bottomCtrlPressable] }> 
-      <Pressable onPress={StampCollectionPressed}>
-          <Image style={styles.ctlBarImg} source={require('../assets/images/stampcollection.png')} /> 
-      </Pressable>
-      </View> 
-      <View style={viewMode === "scrapbook" ? [styles.bottomCtrlPressable, styles.pressableLit] : [styles.bottomCtrlPressable] }>
-      <Pressable onPress={ScrapbookPressed}>
-           <Image style={styles.ctlBarImg} source={require('../assets/images/myscrapbook.png')} /> 
-      </Pressable>     
-      </View> 
-     </View>
-     {/*Spaghetti-ish - TODO: pretty this up */}
+     
      <KeyboardAvoidingView style={{
        flex: 1,
        justifyContent: "center",
@@ -434,8 +437,18 @@ export default function Mainview ({props}) {
         {viewMode === "scrapbook" ? <ScrapbookInterface props={{username: username, authToken: authToken, yourUserName: username}}/> : null}
      </KeyboardAvoidingView> 
      </View>
-  
    )
+   */ 
+  return(
+    <NavigationIndependentTree>
+      <Tab.Navigator tabBar={props => <AppTabBar {...props} username={username} authToken={authToken} />} screenOptions={{headerShown: false, tabBarStyle: styles.bottomCtrlBar}}>
+        <Tab.Screen name="MainFeed" component={MainFeed} />
+        <Tab.Screen name="CreatePostcard" component={CreatePostcardInterface} initialParams={{authToken: authToken, username: username}}/>
+        <Tab.Screen name="Scrapbook" component={ScrapbookInterface} />
+        <Tab.Screen name="StampCollection" component={StampCollection} />
+      </Tab.Navigator>
+    </NavigationIndependentTree>
+  )
 }
 
 //TODO: Optimize and pretty up the bottom bar
@@ -492,12 +505,14 @@ const styles = StyleSheet.create({
   },
   postCardView: {
     flex: 0, 
-    height: 600,
+    height: 700,
     width: 350,
     backgroundColor: "white",
     borderRadius: 10,
     justifyContent: "flex-start",
     alignContent: "flex-start",
+    marginLeft: 30,
+    marginTop: 50
 
   },
   ScrapbookView: {
