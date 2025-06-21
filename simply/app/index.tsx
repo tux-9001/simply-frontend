@@ -2,11 +2,13 @@ import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Butt
 import { useFonts } from 'expo-font'; 
 import React, {useRef, useEffect, useState} from 'react'
 import Mainview from './mainview.tsx'
+
 if (__DEV__) {
   require("./ReactotronConfig");
 }
 export default function Index() {
-  //console.log("I'm alive!")
+  // This is the main entry point of the app, it handles the login and registration process
+  // and then passes the auth token to the main view of the app.
   const [email, onChangeEmail] = React.useState();
   const [username, onChangeUsername] = React.useState(); 
   const [password, onChangePassword] = React.useState();
@@ -66,7 +68,7 @@ export default function Index() {
     }).catch(error => {setErrorMode(true)})
   }
   const sendLoginRequest = () => {
-   const reqHeaders = new Headers()
+   const reqHeaders = new Headers(); 
    reqHeaders.append("Content-Type", "application/json"); 
    //tell the server content type 
    const request = new Request("http://192.168.1.26:3000/login", {
@@ -91,7 +93,9 @@ export default function Index() {
     }).catch(error => {setErrorMode(true)}) // enable error banner if server throws back an error 
 
   }
+  // if no authtoken return login screen 
   if (authToken == "!NOTOKEN") return (
+
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{
@@ -136,8 +140,8 @@ export default function Index() {
     </KeyboardAvoidingView>
 
   );
-  else return(<Mainview props={{authToken: authToken, deAuthFunc: logOut}}/>) 
-
+  else return(
+    <Mainview props={{authToken: authToken, deAuthFunc: logOut}}/>)  
 }
 
 const styles = StyleSheet.create({

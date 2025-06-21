@@ -1,6 +1,11 @@
 import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Button, Pressable, Image, FlatList} from "react-native";
 import * as ImagePicker from 'expo-image-picker'
 import React, {useRef, useEffect, useState} from 'react'
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+const Tab = createBottomTabNavigator();
+
+
 if (__DEV__) {
   require("./ReactotronConfig");
 }
@@ -154,6 +159,9 @@ function DisplayPost({props}) {
   const backText = props.backText; 
   const imageURL = props.imageURL; 
   const username = props.username;
+  const authToken = props.authToken; // auth token used for liking/unliking posts
+  const id = props.id; // id of the post, used for liking 
+  const [isLiked, setLiked] = React.useState(props.isLiked); // boolean indicating if the post is liked by the user
   const [side, setSide] = useState(false); // true for backside of card
   console.log("Stamp:" + stampImgUrl);
   if (imageURL == '!NOIMG') return(
@@ -177,6 +185,28 @@ function DisplayPost({props}) {
     <View style={{flex: 0, flexDirection: "row", width: "100%", height: "10%", backgroundColor: "white", alignItems: "center"}}>
       <Pressable onPress={() => {setSide(!side)}}>
         <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb" }}> view other side --> </Text>
+      </Pressable>
+      <Pressable onPress={() => {
+        const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
+        const req = new Request(isLiked ? "http://192.168.1.26:3000/unlikePost" : "http://192.168.1.26:3000/likePost", {
+          method: "POST",
+          headers: reqHeaders,
+          body: JSON.stringify({
+            postId: id
+          })
+        });
+        fetch(req).then((response) => {
+          if (response.status == 201) {
+            console.log("Post liked/unliked successfully");
+            setLiked(!isLiked); // toggle the like state
+          } else {
+            console.log("Failed to like/unlike post");
+            console.log(response.text);
+          }
+        }
+        ).catch((error) => {console.log(error)        
+      }); } }>
+        <Text style={{fontFamily: "DepartureMono", color: "red", marginLeft: 50}}>{isLiked ? "unlike" : "like"}</Text>
       </Pressable>
       </View>
     </View> 
@@ -204,16 +234,42 @@ function DisplayPost({props}) {
         <Pressable onPress={() => {setSide(!side)}}>
           <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb" }}> view other side --> </Text>
         </Pressable>
+        <Pressable onPress={() => {
+        const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
+        const req = new Request(isLiked ? "http://192.168.1.26:3000/unlikePost" : "http://192.168.1.26:3000/likePost", {
+          method: "POST",
+          headers: reqHeaders,
+          body: JSON.stringify({
+            postId: id
+          })
+        });
+        fetch(req).then((response) => {
+          if (response.status == 201) {
+            console.log("Post liked/unliked successfully");
+            setLiked(!isLiked); // toggle the like state
+          } else {
+            console.log("Failed to like/unlike post");
+          }
+        }
+        ).catch((error) => {console.log(error)        
+      }); } }>
+        <Text style={{fontFamily: "DepartureMono", color: "red", marginLeft: 50}}>{isLiked ? "unlike" : "like"}</Text>
+      </Pressable>
       </View>
     </View>
   ) // return correct formatting if no image 
   }
 function ScrapbookInterface ({props}) {
+  //TODO: Implement following (for not you) and viewing followers (when viewing your scrapbook)
   const [scrapbook, setScrapbook] = useState([]);
   const [authToken, setAuthToken] = useState(props.authToken);
-  const [username, setUsername] = useState(props.username);
+  const [username, setUsername] = useState(props.username); // username of whose scrapbook to view
+  const [yourUserName, setYourUserName] = useState(props.yourUserName); // your username, used for liking posts
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
-  const [scrapbookLoaded, setScrapbookLoaded] = useState(false);
+  const [scrapbookLoaded, setScrapbookLoaded] = useState(false); // boolean for controlling loading of scrapbook
+  const [followingChecked, setFollowingChecked] = useState(false); // boolean to check if followers have been loaded
+  const [viewMode, setViewMode] = useState("scrapbook"); // controls the view mode of the scrapbook interface
+  // if scrapbook, scrapbook view mode (posts)
 
   useEffect(() => {
     if (!scrapbookLoaded) {
@@ -235,14 +291,26 @@ function ScrapbookInterface ({props}) {
     }
   }, [scrapbookLoaded, authToken, username]);
 
-  return(
+
+  if (viewMode == "scrapbook") return( 
      <KeyboardAvoidingView>
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}> 
+        <Text style={{fontFamily: "DepartureMono"}}>{props.username}'s profile </Text>
+        {username != yourUserName ? <Text style={{fontFamily: "DepartureMono", color: "cyan"}}> follow</Text> : null}
+        <Pressable onPress={() => {console.log("viewing stamps"); setViewMode("stampcollection")}}>
+          <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > view stamps </Text>
+        </Pressable>
+        </View>
      {scrapbook.length > 0 ? <DisplayPost props={{
       frontText: scrapbook[currentPostIndex].frontText,
        backText: scrapbook[currentPostIndex].backText,
         imageURL: scrapbook[currentPostIndex].imageURL,
-         stampImgUrl: scrapbook[currentPostIndex].stampImgUrl, username: username}}/>
-      : <Text> no </Text>}
+         stampImgUrl: scrapbook[currentPostIndex].stampImgUrl, 
+         username: username,
+        id: scrapbook[currentPostIndex]._id,
+      isLiked: scrapbook[currentPostIndex].usersLiked.includes(yourUserName),
+    authToken: authToken}}/>
+      : <KeyboardAvoidingView style={styles.postCardView}><Text style={{fontFamily: "DepartureMono"}}>no posts</Text></KeyboardAvoidingView>}
       <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}> 
         {currentPostIndex > 0 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex - 1)}>
            <Text style={{fontFamily: "DepartureMono", marginLeft: -10}}> ← previous post</Text></Pressable>
@@ -254,7 +322,12 @@ function ScrapbookInterface ({props}) {
         </View> 
      </KeyboardAvoidingView>
    )
-
+   else return(
+     <KeyboardAvoidingView style={styles.postCardView}>
+       <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}>
+        <Text style={{fontFamily: "DepartureMono"}}>{props.username}'s stamps</Text> 
+        </View>
+     </KeyboardAvoidingView>  );
 }
 function StampCollection ({props}) {
   // interface to view a users stamp collection 
@@ -264,6 +337,9 @@ function UserProfile ({props}) {
 }
 function StampStore ({props}) {
   // Function to view the stamp store 
+}
+function AppTabBar({ navigation }) {
+  return ()
 }
 //TODO: Implement the interface for this func
 export default function Mainview ({props}) { 
@@ -310,6 +386,7 @@ export default function Mainview ({props}) {
       setViewMode("scrapbook")
    }
    return(
+
     <View style={{
         flex: 1,
         justifyContent: "flex-start",
@@ -318,7 +395,6 @@ export default function Mainview ({props}) {
         height: "100%",
         backgroundColor: 'white'
       }}>
-      
      <View style={styles.bottomCtrlBar}>
      {/*Below: Bottom control bar logic */}
       <View style={viewMode === "mainfeed" ? [styles.bottomCtrlPressable, styles.pressableLit] : [styles.bottomCtrlPressable] }>
@@ -355,11 +431,13 @@ export default function Mainview ({props}) {
         {viewMode === "createpostcard" ? <CreatePostcardInterface props={{username: username, authToken: authToken}}/> : null}
         {viewMode === "mainfeed" ? <MainFeed/> : null}
         {viewMode === "stampcollection" ? <StampCollection/> : null}
-        {viewMode === "scrapbook" ? <ScrapbookInterface props={{username: username, authToken: authToken}}/> : null}
+        {viewMode === "scrapbook" ? <ScrapbookInterface props={{username: username, authToken: authToken, yourUserName: username}}/> : null}
      </KeyboardAvoidingView> 
      </View>
+  
    )
 }
+
 //TODO: Optimize and pretty up the bottom bar
 const styles = StyleSheet.create({
   titleText: {
