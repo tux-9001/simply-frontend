@@ -3,6 +3,8 @@ import * as ImagePicker from 'expo-image-picker'
 import React, {useRef, useEffect, useState} from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationIndependentTree, useLinkProps } from "@react-navigation/native";
+import { routePatternToRegex } from "expo-router/build/fork/getStateFromPath-forks";
+import { Route } from "expo-router/build/Route";
 
 const Tab = createBottomTabNavigator();
 
@@ -259,12 +261,12 @@ function DisplayPost({props}) {
     </View>
   ) // return correct formatting if no image 
   }
-function ScrapbookInterface ({props}) {
+function ScrapbookInterface ({route, navigation}) {
   //TODO: Implement following (for not you) and viewing followers (when viewing your scrapbook)
   const [scrapbook, setScrapbook] = useState([]);
-  const [authToken, setAuthToken] = useState(props.authToken);
-  const [username, setUsername] = useState(props.username); // username of whose scrapbook to view
-  const [yourUserName, setYourUserName] = useState(props.yourUserName); // your username, used for liking posts
+  const [authToken, setAuthToken] = useState(route.params.authToken);
+  const [username, setUsername] = useState(route.params.username); // username of whose scrapbook to view
+  const [yourUserName, setYourUserName] = useState(route.params.yourUserName); // your username, used for liking posts
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [scrapbookLoaded, setScrapbookLoaded] = useState(false); // boolean for controlling loading of scrapbook
   const [followingChecked, setFollowingChecked] = useState(false); // boolean to check if followers have been loaded
@@ -294,8 +296,8 @@ function ScrapbookInterface ({props}) {
 
   if (viewMode == "scrapbook") return( 
      <KeyboardAvoidingView>
-      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}> 
-        <Text style={{fontFamily: "DepartureMono"}}>{props.username}'s profile </Text>
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -80}}> 
+        <Text style={{fontFamily: "DepartureMono"}}>{username}'s profile </Text>
         {username != yourUserName ? <Text style={{fontFamily: "DepartureMono", color: "cyan"}}> follow</Text> : null}
         <Pressable onPress={() => {console.log("viewing stamps"); setViewMode("stampcollection")}}>
           <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > view stamps </Text>
@@ -325,7 +327,7 @@ function ScrapbookInterface ({props}) {
    else return(
      <KeyboardAvoidingView style={styles.postCardView}>
        <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}>
-        <Text style={{fontFamily: "DepartureMono"}}>{props.username}'s stamps</Text> 
+        <Text style={{fontFamily: "DepartureMono"}}>{username}'s stamps</Text> 
         </View>
      </KeyboardAvoidingView>  );
 }
@@ -341,26 +343,28 @@ function StampStore ({props}) {
 function AppTabBar({ navigation, state, username, authToken }) {
   console.log("user:" + username);
   console.log("Auth token: " + authToken);
+  const routeName = state.routes[state.index].name;
+  console.log(routeName);
   return (
     <View style={styles.bottomCtrlBar}>
      {/*Below: Bottom control bar logic */}
-      <View style={styles.bottomCtrlPressable}>
+      <View style={routeName == "MainFeed" ? styles.pressableLit : styles.bottomCtrlPressable}>
       <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/mainfeed.png')} /> 
       </Pressable>
      </View>
-      <View style={styles.bottomCtrlPressable}>
+      <View style={routeName == "CreatePostcard" ? styles.pressableLit : styles.bottomCtrlPressable}>
       <Pressable onPress={() => {navigation.navigate('CreatePostcard', {authToken: authToken, username: username});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/createpostcard.png')} /> 
       </Pressable>
      </View>
       <View style={styles.bottomCtrlPressable}>
-      <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
+      <Pressable onPress={() => {navigation.navigate('StampCollection');}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/stampcollection.png')} /> 
       </Pressable>
      </View>
-           <View style={styles.bottomCtrlPressable}>
-      <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
+           <View style={routeName == "Scrapbook" ? styles.pressableLit : styles.bottomCtrlPressable}>
+      <Pressable onPress={() => {navigation.navigate('Scrapbook', {authToken: authToken, username: username, yourUsername: username});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/myscrapbook.png')} /> 
       </Pressable>
      </View>
@@ -443,7 +447,7 @@ export default function Mainview ({props}) {
     <NavigationIndependentTree>
       <Tab.Navigator tabBar={props => <AppTabBar {...props} username={username} authToken={authToken} />} screenOptions={{headerShown: false, tabBarStyle: styles.bottomCtrlBar}}>
         <Tab.Screen name="MainFeed" component={MainFeed} />
-        <Tab.Screen name="CreatePostcard" component={CreatePostcardInterface} initialParams={{authToken: authToken, username: username}}/>
+        <Tab.Screen name="CreatePostcard" component={CreatePostcardInterface}/>
         <Tab.Screen name="Scrapbook" component={ScrapbookInterface} />
         <Tab.Screen name="StampCollection" component={StampCollection} />
       </Tab.Navigator>
@@ -481,23 +485,30 @@ const styles = StyleSheet.create({
   // * * * * * * 
   bottomCtrlBar: {
     backgroundColor: 'grey', 
-    flex: 0,
+    display: 'flex',
     flexDirection: 'row',
     justifyContent: 'flex-start', 
-    alignItems: 'center',
+    alignItems: 'flex-start',
     width: "100%",
     height: "10%"
   }, 
   bottomCtrlPressable: {
-    flex: 0,
+    flexShrink:0 ,
+    flexGrow: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    width: "25%",
+    width: 100,
     height: "100%",
     backgroundColor: 'grey'
   },
   pressableLit: {
-    backgroundColor: "black"
+    flexShrink:0 ,
+    flexGrow: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    height: "100%",
+    backgroundColor: 'black'
   },
   ctlBarImg: {
     width: 72,
