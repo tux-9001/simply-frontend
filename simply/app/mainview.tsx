@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationIndependentTree, useLinkProps } from "@react-navigation/native";
 import { routePatternToRegex } from "expo-router/build/fork/getStateFromPath-forks";
 import { Route } from "expo-router/build/Route";
+import { useFocusEffect } from "expo-router";
 
 const Tab = createBottomTabNavigator();
 
@@ -12,9 +13,68 @@ const Tab = createBottomTabNavigator();
 if (__DEV__) {
   require("./ReactotronConfig");
 }
-function MainFeed ({props}) {
-  // main friend feed function
-  return(<Text>Hello</Text>)
+function MainFeed ({route, navigation}) {
+  // main post feed function, displays all posts in a feed-like manner
+  const [posts, setPosts] = useState([]); // array of posts
+  const [authToken, setAuthToken] = useState(route.params.authToken); // auth token used for liking/unliking posts
+  const [postsLoaded, setPostsLoaded] = useState(false); // boolean to check if posts have been loaded 
+  const [currentPostIndex, setCurrentPostIndex] = useState(0); // index of the current post being displayed
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("Focused on main feed");
+      setPostsLoaded(false);
+    }, [])); // reset postsLoaded on focus - this ensures posts most updated
+  useEffect(() => {
+    if (!postsLoaded) {
+      const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
+      const request = new Request("http://192.168.1.26:3000/getMainfeed", {
+        method: "GET",
+        headers: reqHeaders
+      })
+    if (!postsLoaded) {
+      const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
+      const request = new Request("http://192.168.1.26:3000/getMainfeed", {
+        method: "GET",
+        headers: reqHeaders
+      });
+      fetch(request)
+        .then((response) => response.json())
+        .then((data) => {
+          setPosts(data);
+          setPostsLoaded(true);
+          console.log("Posts loaded: " + data.length); 
+        })
+        .catch((error) => {console.log(error)});
+    }
+  }}, [postsLoaded, authToken, route.params.authToken, route.params.username, currentPostIndex]);
+  return(<KeyboardAvoidingView>
+    <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -70, marginTop: 10}}> 
+      <Text style={{fontFamily: "DepartureMono", marginLeft: 10}}>Main Feed</Text>
+      <Pressable onPress={() => {navigation.navigate('CreatePostcard', {authToken: authToken, username: route.params.username})}}>
+        <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > create postcard </Text>
+      </Pressable>
+    </View>
+  <View style={{marginLeft: -10}}>
+    <DisplayPost props={{
+        frontText: posts.length > 0 ? posts[currentPostIndex].frontText : "",
+        backText: posts.length > 0 ? posts[currentPostIndex].backText : "",
+        imageURL: posts.length > 0 ? posts[currentPostIndex].imageURL : "!NOIMG",
+        stampImgUrl: posts.length > 0 ? posts[currentPostIndex].stampImgUrl : "!NOSTAMP",
+        username: route.params.username,
+        id: posts.length > 0 ? posts[currentPostIndex]._id : "",
+        isLiked: false,
+        authToken: authToken
+      }}/>
+      </View>
+            <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginLeft: 40}}> 
+        {currentPostIndex > 0 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex - 1)}>
+           <Text style={{fontFamily: "DepartureMono", marginLeft: -10}}> ← previous post</Text></Pressable>
+           :<Text style={{fontFamily: "DepartureMono", marginLeft: -20}}> no previous posts</Text>}
+        {currentPostIndex < posts.length - 1 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex + 1)}> 
+          <Text style={{fontFamily: "DepartureMono", marginLeft: 10}}>next post →</Text></Pressable>
+          :<Text style={{fontFamily: "DepartureMono", marginLeft: 20}}> no more posts</Text>} 
+      </View>
+  </KeyboardAvoidingView>)
 }
 
 function CreatePostcardInterface ({ route, navigation }) {
@@ -45,9 +105,9 @@ function CreatePostcardInterface ({ route, navigation }) {
         stamp: stamp 
       })
     })
-    fetch(request).then((result) => {console.log("status: "+result.status); 
+    if (stamp != "!NOSTAMP" && frontText != "") fetch(request).then((result) => {console.log("status: "+result.status); 
                         if (result.status == 201) navigation.navigate('MainFeed');}) 
-    console.log(postCompleted.toString()) // to navigate to another component wrap navigate call in event handler 
+    else console.log("Error - frontText or stamp empty!") // to navigate to another component wrap navigate call in event handler 
   }
 
   //below: default state of the component, first side and not in stamp picker mode
@@ -110,7 +170,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
       textAlignVertical="top"
       multiline={true}/>    
     <View style={{flex:0, flexDirection: "row", width: "100%", height: "10%", backgroundColor: "white", alignItems: "center"}}>
-      <Pressable onPress={() => {console.log("post button pressed")}}>
+      <Pressable onPress={submitPost}>
         <Text style={{fontFamily: "DepartureMono", color: "cyan"}}>post</Text>
       </Pressable>
 
@@ -271,8 +331,22 @@ function ScrapbookInterface ({route, navigation}) {
   const [scrapbookLoaded, setScrapbookLoaded] = useState(false); // boolean for controlling loading of scrapbook
   const [followingChecked, setFollowingChecked] = useState(false); // boolean to check if followers have been loaded
   const [viewMode, setViewMode] = useState("scrapbook"); // controls the view mode of the scrapbook interface
+  const [followers, setFollowers] = useState([]); // array of followers, used for viewing followers
+  // scrapbook is the main post-type interface 
+  // stamps shows a users stamps 
+  // 
+  const [following, setFollowing] = useState(false); // boolean to check if you are following the user (if not you)
   // if scrapbook, scrapbook view mode (posts)
-
+  console.log("Username: " + username);
+  console.log("Your username: " + yourUserName);
+  useFocusEffect(
+   React.useCallback(() => {
+    console.log("Focused on scrapbook interface");
+    setScrapbookLoaded(false);
+    setFollowingChecked(false);
+    setCurrentPostIndex(0);
+    setViewMode("scrapbook");
+   }, [])); // reset state variables on focus - this ensures scrapbook most updated 
   useEffect(() => {
     if (!scrapbookLoaded) {
       const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
@@ -291,16 +365,95 @@ function ScrapbookInterface ({route, navigation}) {
         })
         .catch((error) => console.log(error));
     }
-  }, [scrapbookLoaded, authToken, username]);
+    if (!followingChecked && username != yourUserName) {
+      const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
+      const req = new Request("http://192.168.1.26/isFollowing", {
+        method: "GET",
+        headers: reqHeaders,
+      });
+      fetch(req)
+        .then((response) => response.json())
+        .then((data) => {if (data.isFollowing) {
+          console.log("You are following " + username);
+          setFollowingChecked(true);
+          setFollowing(true);
+        }})
+      }
+      if (!followingChecked && username == yourUserName) {
+        console.log("getting your followers");
+        const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+        const req = new Request("http://192.168.1.26:3000/getFollowers", {
+          method: "GET",
+          headers: reqHeaders,
+        });
+        fetch(req)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Followers: " + data);
+            setFollowers(data);}).catch((error) => console.log(error));  
+        setFollowingChecked(true);
+      }
+  }, [scrapbookLoaded, authToken, username, setFollowingChecked, setFollowing, yourUserName]);
 
 
   if (viewMode == "scrapbook") return( 
      <KeyboardAvoidingView>
-      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -80}}> 
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -70, marginTop: 10}}> 
         <Text style={{fontFamily: "DepartureMono"}}>{username}'s profile </Text>
-        {username != yourUserName ? <Text style={{fontFamily: "DepartureMono", color: "cyan"}}> follow</Text> : null}
+        {username != yourUserName ? (
+          following ? (
+            <Pressable onPress={() => {
+              const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+              const req = new Request("http://192.168.1.26:3000/unfollowUser", {
+              method: "POST",
+              headers: reqHeaders,
+              body: JSON.stringify({
+                userToUnfollow: username
+              })});
+              fetch(req).then((response) => {
+                if (response.status == 201) {
+                  console.log("Unfollowed " + username);
+                  setFollowing(false);
+                  setFollowingChecked(true);
+                } else {      
+                  console.log("Failed to unfollow " + username);
+                }
+              });
+            }  
+          }>
+            <Text style={{fontFamily: "DepartureMono", color: "red"}}>unfollow</Text></Pressable>):(
+            <Pressable onPress={() => {
+              // if you get a text outside text block warning, check spacing around colon in ternary 
+              // for some reason, it throws this error when spaces around colon sometimes 
+              console.log("Following " + username);
+              const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+              const req = new Request("http://192.168.1.26:3000/followUser", {
+              method: "POST",
+              headers: reqHeaders,
+              body: JSON.stringify({
+                userToFollow: username
+              })});
+              fetch(req).then((response) => {
+                if (response.status == 201) {
+                  console.log("followed " + username);
+                  setFollowing(true);
+                  setFollowingChecked(true);
+                } else {      
+                  console.log("Failed to follow " + username);
+                }
+              }).catch((error) => {console.log(error)});
+            }  
+          }>
+            <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > follow </Text>
+          </Pressable>
+          )
+        ):(
+          <Pressable onPress={() => {setViewMode("viewFollowing")}}> 
+            <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > view following </Text>
+          </Pressable>
+        )}  
         <Pressable onPress={() => {console.log("viewing stamps"); setViewMode("stampcollection")}}>
-          <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > view stamps </Text>
+          <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > stamps </Text>
         </Pressable>
         </View>
      {scrapbook.length > 0 ? <DisplayPost props={{
@@ -313,23 +466,63 @@ function ScrapbookInterface ({route, navigation}) {
       isLiked: scrapbook[currentPostIndex].usersLiked.includes(yourUserName),
     authToken: authToken}}/>
       : <KeyboardAvoidingView style={styles.postCardView}><Text style={{fontFamily: "DepartureMono"}}>no posts</Text></KeyboardAvoidingView>}
-      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}> 
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginLeft: 40}}> 
         {currentPostIndex > 0 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex - 1)}>
            <Text style={{fontFamily: "DepartureMono", marginLeft: -10}}> ← previous post</Text></Pressable>
            :<Text style={{fontFamily: "DepartureMono", marginLeft: -20}}> no previous posts</Text>}
-      
         {currentPostIndex < scrapbook.length - 1 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex + 1)}> 
           <Text style={{fontFamily: "DepartureMono", marginLeft: 10}}>next post →</Text></Pressable>
           :<Text style={{fontFamily: "DepartureMono", marginLeft: 20}}> no more posts</Text>}
         </View> 
      </KeyboardAvoidingView>
    )
-   else return(
+   else if (viewMode == "stampCollection") return(
      <KeyboardAvoidingView style={styles.postCardView}>
        <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}>
         <Text style={{fontFamily: "DepartureMono"}}>{username}'s stamps</Text> 
         </View>
      </KeyboardAvoidingView>  );
+    else if (viewMode == "viewFollowing") return(
+      <KeyboardAvoidingView style={styles.postCardView}>
+        <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center"}}>
+          <Text style={{fontFamily: "DepartureMono"}}>your following</Text>
+          <Pressable onPress={() => {setViewMode("scrapbook")}}>
+            <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: "100"}}>go back</Text>
+          </Pressable>
+          </View>
+          <FlatList
+            data={followers}
+            renderItem={({item}) => 
+              <View style={{flex: 0, flexDirection: "row", width: "100%", height: 50, alignItems: "center"}}>
+                <Text style={{fontFamily: "DepartureMono"}}>{item}</Text>
+                <Pressable onPress={() => {}}>
+                  <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 30}}>view profile</Text>
+                </Pressable>
+                <Pressable onPress={() => {
+                  const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+                  const req = new Request("http://192.168.1.26:3000/unfollowUser", {
+                    method: "POST",
+                    headers: reqHeaders,
+                    body: JSON.stringify({
+                      userToUnfollow: item
+                    })
+                  });
+                  fetch(req).then((response) => {
+                    if (response.status == 201) {
+                      console.log("Unfollowed " + item);
+                      setFollowers(followers.filter(follower => follower !== item));
+                    } else {      
+                      console.log("Failed to unfollow " + item);
+                    }
+                  }).catch((error) => {console.log(error)});
+                }
+                }>
+                  <Text style={{fontFamily: "DepartureMono", color: "red", marginLeft: 30}}>unfollow</Text>
+                </Pressable>        
+              </View> }/>
+              
+        </KeyboardAvoidingView>
+    ); 
 }
 function StampCollection ({props}) {
   // interface to view a users stamp collection 
@@ -349,7 +542,7 @@ function AppTabBar({ navigation, state, username, authToken }) {
     <View style={styles.bottomCtrlBar}>
      {/*Below: Bottom control bar logic */}
       <View style={routeName == "MainFeed" ? styles.pressableLit : styles.bottomCtrlPressable}>
-      <Pressable onPress={() => {navigation.navigate('MainFeed');}}>
+      <Pressable onPress={() => {navigation.navigate('MainFeed', {authToken: authToken});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/mainfeed.png')} /> 
       </Pressable>
      </View>
@@ -364,7 +557,7 @@ function AppTabBar({ navigation, state, username, authToken }) {
       </Pressable>
      </View>
            <View style={routeName == "Scrapbook" ? styles.pressableLit : styles.bottomCtrlPressable}>
-      <Pressable onPress={() => {navigation.navigate('Scrapbook', {authToken: authToken, username: username, yourUsername: username});}}>
+      <Pressable onPress={() => {navigation.navigate('Scrapbook', {authToken: authToken, username: username, yourUserName: username});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/myscrapbook.png')} /> 
       </Pressable>
      </View>
@@ -445,8 +638,8 @@ export default function Mainview ({props}) {
    */ 
   return(
     <NavigationIndependentTree>
-      <Tab.Navigator tabBar={props => <AppTabBar {...props} username={username} authToken={authToken} />} screenOptions={{headerShown: false, tabBarStyle: styles.bottomCtrlBar}}>
-        <Tab.Screen name="MainFeed" component={MainFeed} />
+      <Tab.Navigator backBehavior="fullHistory" tabBar={props => <AppTabBar {...props} username={username} authToken={authToken} />} screenOptions={{headerShown: false, tabBarStyle: styles.bottomCtrlBar}}>
+        <Tab.Screen name="MainFeed" component={MainFeed} initialParams={{authToken: authToken}} />
         <Tab.Screen name="CreatePostcard" component={CreatePostcardInterface}/>
         <Tab.Screen name="Scrapbook" component={ScrapbookInterface} />
         <Tab.Screen name="StampCollection" component={StampCollection} />
@@ -516,7 +709,7 @@ const styles = StyleSheet.create({
   },
   postCardView: {
     flex: 0, 
-    height: 700,
+    height: 650,
     width: 350,
     backgroundColor: "white",
     borderRadius: 10,
