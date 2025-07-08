@@ -19,18 +19,16 @@ function MainFeed ({route, navigation}) {
   const [authToken, setAuthToken] = useState(route.params.authToken); // auth token used for liking/unliking posts
   const [postsLoaded, setPostsLoaded] = useState(false); // boolean to check if posts have been loaded 
   const [currentPostIndex, setCurrentPostIndex] = useState(0); // index of the current post being displayed
+  const [followingCurrentPost, setFollowingCurrentPost] = useState(false); // boolean to check if the current post's user is being followed
+  const [currentPostUsername, setCurrentPostUsername] = useState(""); // username of the current post's user
   useFocusEffect(
     React.useCallback(() => {
       console.log("Focused on main feed");
       setPostsLoaded(false);
     }, [])); // reset postsLoaded on focus - this ensures posts most updated
+    
   useEffect(() => {
-    if (!postsLoaded) {
-      const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
-      const request = new Request("http://192.168.1.26:3000/getMainfeed", {
-        method: "GET",
-        headers: reqHeaders
-      })
+    
     if (!postsLoaded) {
       const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken}
       const request = new Request("http://192.168.1.26:3000/getMainfeed", {
@@ -42,31 +40,77 @@ function MainFeed ({route, navigation}) {
         .then((data) => {
           setPosts(data);
           setPostsLoaded(true);
-          console.log("Posts loaded: " + data.length); 
+          console.log("Posts loaded: " + data); 
         })
-        .catch((error) => {console.log(error)});
+        .catch((error) => {console.log(error)}); 
     }
-  }}, [postsLoaded, authToken, route.params.authToken, route.params.username, currentPostIndex]);
+
+}), [postsLoaded, authToken, route.params.authToken, route.params.username, currentPostIndex]; 
+useEffect(() => {
+  if (posts.length > 0) {
+    const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken, "userToCheck": posts[currentPostIndex].username};
+    const request = new Request("http://192.168.1.26:3000/isFollowing", {
+      method: "GET",
+      headers: reqHeaders
+    });
+    fetch(request).then((response) => {return response.json()}).then((data) => {
+      setFollowingCurrentPost(data.isFollowing);
+      setCurrentPostUsername(data.userToCheck);
+      console.log("Current post username: " + currentPostUsername);
+    }).catch((error) => {console.log(error)});
+    
+  }
+ } // chreck if the current post's user is being followed
+), [currentPostIndex, posts]; // update followingCurrentPost when post changes 
+    console.log("dispuser "+route.params.username)
   return(<KeyboardAvoidingView>
     <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -70, marginTop: 10}}> 
       <Text style={{fontFamily: "DepartureMono", marginLeft: 10}}>Main Feed</Text>
       <Pressable onPress={() => {navigation.navigate('CreatePostcard', {authToken: authToken, username: route.params.username})}}>
         <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}} > create postcard </Text>
       </Pressable>
+      <Pressable onPress={() => {
+        console.log("Following " + currentPostUsername);
+        const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+        const req = new Request(followingCurrentPost ? "http://192.168.1.26:3000/unfollowUser" : "http://192.168.1.26:3000/followUser", {
+          method: "POST",
+          headers: reqHeaders,
+          body: JSON.stringify({
+            user: currentPostUsername // username of the current post's user 
+          })
+        });
+        fetch(req).then((response) => {
+          if (response.status == 201) {
+            console.log(followingCurrentPost ? "Unfollowed " + posts[currentPostIndex].username : "Followed " + posts[currentPostIndex].username);
+            setFollowingCurrentPost(!followingCurrentPost); // toggle the following state
+          } else {
+            console.log("Failed to follow/unfollow " + posts[currentPostIndex].username);
+          }
+        }).catch((error) => {console.log(error)});
+      }}>
+        {followingCurrentPost ? <Text style={{fontFamily: "DepartureMono", color: "black"}}>unfollow</Text>
+         : <Text style={{fontFamily: "DepartureMono", color: "black"}}>follow</Text> }
+      </Pressable>
     </View>
-  <View style={{marginLeft: -10}}>
-    <DisplayPost props={{
-        frontText: posts.length > 0 ? posts[currentPostIndex].frontText : "",
-        backText: posts.length > 0 ? posts[currentPostIndex].backText : "",
-        imageURL: posts.length > 0 ? posts[currentPostIndex].imageURL : "!NOIMG",
-        stampImgUrl: posts.length > 0 ? posts[currentPostIndex].stampImgUrl : "!NOSTAMP",
-        username: route.params.username,
-        id: posts.length > 0 ? posts[currentPostIndex]._id : "",
+  <View style={{marginLeft: -10, height: "97%"}}>
+    {posts.length > 0 ? (
+      <DisplayPost props={{
+        frontText: posts[currentPostIndex].frontText,
+        backText: posts[currentPostIndex].backText,
+        imageURL: posts[currentPostIndex].imageURL,
+        stampImgUrl: posts[currentPostIndex].stampImgUrl,
+        username: posts[currentPostIndex].username,
+        id: posts[currentPostIndex]._id,
         isLiked: false,
         authToken: authToken
       }}/>
-      </View>
-            <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginLeft: 40}}> 
+    ) : (
+      <KeyboardAvoidingView style={styles.postCardView}>
+        <Text style={{fontFamily: "DepartureMono"}}>no posts</Text>
+      </KeyboardAvoidingView>
+    )}
+  </View>
+            <View style={{flex: 0, flexDirection: "row", width: 350, height: "5%", alignItems: "center", marginLeft: 40, marginTop: "-50"}}> 
         {currentPostIndex > 0 ? <Pressable onPress={() => setCurrentPostIndex(currentPostIndex - 1)}>
            <Text style={{fontFamily: "DepartureMono", marginLeft: -10}}> ← previous post</Text></Pressable>
            :<Text style={{fontFamily: "DepartureMono", marginLeft: -20}}> no previous posts</Text>}
@@ -220,12 +264,36 @@ function DisplayPost({props}) {
   const frontText = props.frontText; 
   const backText = props.backText; 
   const imageURL = props.imageURL; 
-  const username = props.username;
+  const [username, setUsername] = React.useState(props.username);
+  const [postDataLoaded, setPostDataLoaded] = React.useState(false); 
   const authToken = props.authToken; // auth token used for liking/unliking posts
   const id = props.id; // id of the post, used for liking 
-  const [isLiked, setLiked] = React.useState(props.isLiked); // boolean indicating if the post is liked by the user
+  const [isLiked, setLiked] = React.useState(false); // boolean indicating if the post is liked by the user
   const [side, setSide] = useState(false); // true for backside of card
-  console.log("Stamp:" + stampImgUrl);
+  React.useEffect(() => {
+    console.log("displaying post");
+    const reqHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": authToken,
+      "postid": id
+    };
+    const req = new Request("http://192.168.1.26:3000/postInfo", {
+      method: "GET",
+      headers: reqHeaders
+    });
+    fetch(req)
+      .then((response) => response.json())
+      .then((data) => {
+        setLiked(data.isLiked);
+        setUsername(data.username);
+        console.log("Post data loaded: " + data.username);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }, [id]);
+  //console.log("Stamp:" + stampImgUrl);
+  
   if (imageURL == '!NOIMG') return(
     <View style={styles.postCardView}>
       <View style={{
@@ -239,7 +307,7 @@ function DisplayPost({props}) {
       backgroundColor: "#dbdbdb",
      //percentage may cause weird gaps
     }}> 
-    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
+    <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{username}</Text>
     <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> This is a stamp. </Text>
      <Image source={{uri: stampImgUrl}} style={styles.stampStyle}/>
     </View>
@@ -286,7 +354,7 @@ function DisplayPost({props}) {
           backgroundColor: "#dbdbdb",
      //percentage may cause weird gaps
          }}> 
-        <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{props.username}</Text>
+        <Text style={{marginLeft:"2%", fontFamily: "DepartureMono", fontSize: 20}}>{username}</Text>
         <Text style={{fontFamily: "DepartureMono", fontSize: 10, color: "grey"}}> This post has an image!</Text>
         <Image source={{uri: stampImgUrl}} style={styles.stampStyle}/>
       </View>
@@ -360,7 +428,7 @@ function ScrapbookInterface ({route, navigation}) {
           setScrapbook(data);
           setScrapbookLoaded(true);
           for (let index = 0; index < data.length; index++) {
-            console.log("sbi:" + data[index].stampImgUrl);
+            //console.log("sbi:" + data[index].stampImgUrl);
           }
         })
         .catch((error) => console.log(error));
@@ -690,7 +758,7 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 100,
+    width: "25%",
     height: "100%",
     backgroundColor: 'grey'
   },
@@ -709,7 +777,7 @@ const styles = StyleSheet.create({
   },
   postCardView: {
     flex: 0, 
-    height: 650,
+    height: "80%",
     width: 350,
     backgroundColor: "white",
     borderRadius: 10,
