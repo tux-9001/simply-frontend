@@ -48,14 +48,15 @@ function MainFeed ({route, navigation}) {
 }), [postsLoaded, authToken, route.params.authToken, route.params.username, currentPostIndex]; 
 useEffect(() => {
   if (posts.length > 0) {
-    const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken, "userToCheck": posts[currentPostIndex].username};
+    console.log(posts[currentPostIndex].postingUser+" is the current post's user");
+    const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken, "usertoview": posts[currentPostIndex].postingUser};
     const request = new Request("http://192.168.1.26:3000/isFollowing", {
       method: "GET",
       headers: reqHeaders
     });
     fetch(request).then((response) => {return response.json()}).then((data) => {
       setFollowingCurrentPost(data.isFollowing);
-      setCurrentPostUsername(data.userToCheck);
+      setCurrentPostUsername(data.username);
       console.log("Current post username: " + currentPostUsername);
     }).catch((error) => {console.log(error)});
     
@@ -76,7 +77,7 @@ useEffect(() => {
           method: "POST",
           headers: reqHeaders,
           body: JSON.stringify({
-            user: currentPostUsername // username of the current post's user 
+            user: posts[currentPostIndex].postingUser // username of the current post's user 
           })
         });
         fetch(req).then((response) => {
@@ -99,7 +100,7 @@ useEffect(() => {
         backText: posts[currentPostIndex].backText,
         imageURL: posts[currentPostIndex].imageURL,
         stampImgUrl: posts[currentPostIndex].stampImgUrl,
-        username: posts[currentPostIndex].username,
+        username: posts[currentPostIndex].postingUser,
         id: posts[currentPostIndex]._id,
         isLiked: false,
         authToken: authToken
@@ -270,29 +271,7 @@ function DisplayPost({props}) {
   const id = props.id; // id of the post, used for liking 
   const [isLiked, setLiked] = React.useState(false); // boolean indicating if the post is liked by the user
   const [side, setSide] = useState(false); // true for backside of card
-  React.useEffect(() => {
-    console.log("displaying post");
-    const reqHeaders = {
-      "Content-Type": "application/json",
-      "Authorization": authToken,
-      "postid": id
-    };
-    const req = new Request("http://192.168.1.26:3000/postInfo", {
-      method: "GET",
-      headers: reqHeaders
-    });
-    fetch(req)
-      .then((response) => response.json())
-      .then((data) => {
-        setLiked(data.isLiked);
-        setUsername(data.username);
-        console.log("Post data loaded: " + data.username);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }, [id]);
-  //console.log("Stamp:" + stampImgUrl);
+  
   
   if (imageURL == '!NOIMG') return(
     <View style={styles.postCardView}>
@@ -529,7 +508,7 @@ function ScrapbookInterface ({route, navigation}) {
        backText: scrapbook[currentPostIndex].backText,
         imageURL: scrapbook[currentPostIndex].imageURL,
          stampImgUrl: scrapbook[currentPostIndex].stampImgUrl, 
-         username: username,
+         username: scrapbook[currentPostIndex].postingUser,
         id: scrapbook[currentPostIndex]._id,
       isLiked: scrapbook[currentPostIndex].usersLiked.includes(yourUserName),
     authToken: authToken}}/>
@@ -572,7 +551,7 @@ function ScrapbookInterface ({route, navigation}) {
                     method: "POST",
                     headers: reqHeaders,
                     body: JSON.stringify({
-                      userToUnfollow: item
+                      user: item
                     })
                   });
                   fetch(req).then((response) => {
