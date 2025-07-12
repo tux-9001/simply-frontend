@@ -2,6 +2,7 @@ import { Text, View, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Butt
 import { useFonts } from 'expo-font'; 
 import React, {useRef, useEffect, useState} from 'react'
 import Mainview from './mainview.tsx'
+import * as SecureStore from 'expo-secure-store';
 
 if (__DEV__) {
   require("./ReactotronConfig");
@@ -18,7 +19,24 @@ export default function Index() {
   // for signing into the service 
   const emailInputRef = React.createRef<TextInput>(null); 
   const usernameInputRef = React.createRef<TextInput>(null); 
-  const passwordInputRef = React.createRef<TextInput>(null); // references for focusing each input dialog 
+  const passwordInputRef = React.createRef<TextInput>(null); // references for focusing each input dialog
+  useEffect(() => {
+    // on mount, check if the user is already logged in
+    const getToken = async () => {
+      let result = await SecureStore.getItemAsync("simply_auth_token");
+      if (result) {
+        // if the token is found, set it as the auth token
+        setAuthToken(result);
+      } else {
+        // if no token is found, set the auth token to "!NOTOKEN"
+        setAuthToken("!NOTOKEN");
+      }
+    }
+    getToken(); // call the function to get the token
+    // check if the user is logged in, if not, set the auth token to "!NOTOKEN"
+    // this will trigger the login screen to be displayed
+         
+  }, []); 
   function logOut() {
     //function to log out, called when going back to unauthenticated state 
     setToken("!NOTOKEN"); 
@@ -86,8 +104,9 @@ export default function Index() {
         return result.json();
       }
       if (result.status == 401 || result.status == 400) setErrorMode(true);
-    }).then((data) => {
+    }).then( async (data) => {
       console.log("Token: "+data.token)
+      await SecureStore.setItemAsync("simply_auth_token", data.token); // store the token in secure storage
       setAuthToken(data.token)
       //print("Set token OK")
     }).catch(error => {setErrorMode(true)}) // enable error banner if server throws back an error 

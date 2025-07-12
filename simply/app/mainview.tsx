@@ -268,7 +268,9 @@ function DisplayPost({props}) {
   const [username, setUsername] = React.useState(props.username);
   const [postDataLoaded, setPostDataLoaded] = React.useState(false); 
   const authToken = props.authToken; // auth token used for liking/unliking posts
-  const id = props.id; // id of the post, used for liking 
+  const id = props.id; // id of the post, used for liking
+  const numLikes = props.numLikes != null ? props.numLikes : -1; // number of likes on the post, used for displaying likes
+  // numLikes is only used if the post is being viewed by the posting user and numLikes NOT null - if not, the like button is displayed (if -1) 
   const [isLiked, setLiked] = React.useState(false); // boolean indicating if the post is liked by the user
   const [side, setSide] = useState(false); // true for backside of card
   
@@ -762,7 +764,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "flex-start",
     alignContent: "flex-start",
-    marginLeft: 30,
+    marginLeft: "3.5%",
     marginTop: 50
 
   },
