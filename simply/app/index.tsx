@@ -159,7 +159,7 @@ export default function Index() {
     </KeyboardAvoidingView>
 
   );
-  else return(
+  else if (authToken != "!NOTOKEN" && loaded) return(
     <Mainview props={{authToken: authToken, deAuthFunc: logOut}}/>)  
 }
 

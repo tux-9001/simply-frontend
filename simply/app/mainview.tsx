@@ -64,7 +64,7 @@ useEffect(() => {
  } // chreck if the current post's user is being followed
 ), [currentPostIndex, posts]; // update followingCurrentPost when post changes 
     console.log("dispuser "+route.params.username)
-  return(<KeyboardAvoidingView>
+  return(<KeyboardAvoidingView style={{flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%"}}>
     <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -70, marginTop: 10}}> 
       <Text style={{fontFamily: "DepartureMono", marginLeft: 10}}>Main Feed</Text>
       <Pressable onPress={() => {navigation.navigate('CreatePostcard', {authToken: authToken, username: route.params.username})}}>
@@ -273,8 +273,27 @@ function DisplayPost({props}) {
   // numLikes is only used if the post is being viewed by the posting user and numLikes NOT null - if not, the like button is displayed (if -1) 
   const [isLiked, setLiked] = React.useState(false); // boolean indicating if the post is liked by the user
   const [side, setSide] = useState(false); // true for backside of card
-  
-  
+  console.log("DisplayPost props: " + JSON.stringify(props));
+  React.useEffect(() => {
+    if (!postDataLoaded) {
+      const reqHeaders = {"Content-Type": "application/json", "Authorization": authToken, "postid": id}
+      const request = new Request("http://192.168.1.26:3000/postInfo", {
+        method: "GET",
+        headers: reqHeaders
+      });
+    
+    fetch(request).then((response) => response.json()).then((data) => {
+      console.log("Post data loaded: " + data);
+      setUsername(data.username);
+      setPostDataLoaded(true);
+      if (data.isLiked) {
+        setLiked(true); // set liked state if post is liked by user
+      } else {
+        setLiked(false); // set not liked state if post is not liked by user
+      }
+    });
+  }
+  }, [postDataLoaded, authToken, id]); // fetch post data only once
   if (imageURL == '!NOIMG') return(
     <View style={styles.postCardView}>
       <View style={{
@@ -398,6 +417,7 @@ function ScrapbookInterface ({route, navigation}) {
    }, [])); // reset state variables on focus - this ensures scrapbook most updated 
   useEffect(() => {
     if (!scrapbookLoaded) {
+      console.log("Loading scrapbook for " + username);
       const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
       const req = new Request("http://192.168.1.26:3000/getScrapBook", {
         method: "GET",
@@ -446,8 +466,8 @@ function ScrapbookInterface ({route, navigation}) {
 
 
   if (viewMode == "scrapbook") return( 
-     <KeyboardAvoidingView>
-      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center", marginBottom: -70, marginTop: 10}}> 
+     <KeyboardAvoidingView style={{flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%"}}>
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "10%", alignItems: "center",  marginBottom: -70, marginTop: 10}}> 
         <Text style={{fontFamily: "DepartureMono"}}>{username}'s profile </Text>
         {username != yourUserName ? (
           following ? (
@@ -764,7 +784,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "flex-start",
     alignContent: "flex-start",
-    marginLeft: "3.5%",
+
     marginTop: 50
 
   },
