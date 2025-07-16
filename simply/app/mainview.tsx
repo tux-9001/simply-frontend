@@ -156,7 +156,9 @@ function CreatePostcardInterface ({ route, navigation }) {
   }
 
   //below: default state of the component, first side and not in stamp picker mode
-  if (!stampPickerMode && !side) return(<KeyboardAvoidingView style={styles.postCardView}     behavior={'padding'}>
+  if (!stampPickerMode && !side) return(
+  <KeyboardAvoidingView style={{flexDirection: "row", justifyContent: "center", height: "100%"}} behavior={'padding'}>
+  <KeyboardAvoidingView style={styles.postCardView}     behavior={'padding'}>
    <Pressable  onPress={() => {setStampPickerMode(true)}}>
     <View style={{
       flex: 0,
@@ -204,9 +206,11 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
       <Text style={{fontFamily: "DepartureMono", color: "#dbdbdb" }}> edit other side --></Text>
       </Pressable>
     </View>
+  </KeyboardAvoidingView>
   </KeyboardAvoidingView>)
   //backside display below 
   if (!stampPickerMode && side) return(
+    <KeyboardAvoidingView style={{flexDirection: "row", justifyContent: "center", height: "100%"}} behavior={'padding'}>
     <KeyboardAvoidingView style={styles.postCardView} behavior={'padding'}>
      <TextInput
     style={{width: "100%", height: "83.5%", backgroundColor: "white",  fontFamily: "DepartureMono", marginTop: 20}}
@@ -224,6 +228,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
       </Pressable>
     </View>
 
+    </KeyboardAvoidingView>
     </KeyboardAvoidingView>
   )
   //handler for stamp picker below 
@@ -244,6 +249,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
       setStamps(rJSON)
     }).catch((error) => {console.log(error)});
     return(
+      <KeyboardAvoidingView style={{flexDirection: "row", justifyContent: "center", height: "100%"}} behavior={'padding'}>
       <KeyboardAvoidingView style={styles.postCardView}>
         <FlatList
           data={stamps}
@@ -256,6 +262,7 @@ style={postImage == "!NOIMG" ? {width: "100%", height: "70%", backgroundColor: "
             </View>}
           keyExtractor={item => item.prettyName}
         />
+      </KeyboardAvoidingView>
       </KeyboardAvoidingView> 
     )
   }
@@ -593,9 +600,119 @@ function ScrapbookInterface ({route, navigation}) {
         </KeyboardAvoidingView>
     ); 
 }
-function StampCollection ({props}) {
-  // interface to view a users stamp collection 
-}
+function StampCollection ({route, navigation}) {
+  // interface to view a users stamp collection
+  const [stamps, setStamps] = useState([]); // your stamps 
+  const [stampsLoaded, setStampsLoaded] = useState(false); // boolean to check if stamps have been loaded 
+  const [yourStampsLoaded, setYourStampsLoaded] = useState(false); // boolean to check if your stamps have been loaded
+  const [yourStamps, setYourStamps] = useState([]); // stamps that you have 
+  const [authToken, setAuthToken] = useState(route.params.authToken);
+  const [username, setUsername] = useState(route.params.username); // username of whose stamps to view
+  const [showStore, setShowStore] = useState(false); // boolean to check if the stamp store is being viewed 
+  React.useEffect(() => {
+    if (!yourStampsLoaded) {
+      console.log("Loading stamps for " + username);
+      const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken, "usertoview": username}
+      const req = new Request("http://192.168.1.26:3000/getStampBook", {
+        method: "GET",
+        headers: reqHeaders,
+      });
+      fetch(req)
+        .then((response) => response.json())
+        .then((data) => {
+          setYourStamps(data);
+          setYourStampsLoaded(true);
+        })
+        .catch((error) => console.log(error));
+    }
+    if (!stampsLoaded) {
+      console.log("Loading all stamps");
+      const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+      const req = new Request("http://192.168.1.26:3000/getAllStamps", {
+        method: "GET",
+        headers: reqHeaders,
+      });
+      fetch(req)
+        .then((response) => response.json())
+        .then((data) => {
+          console.log("Your stamps: " + data);
+          setStamps(data);
+          setStampsLoaded(true);
+        })
+        .catch((error) => console.log(error));
+    }
+  }, [stampsLoaded, authToken, username, yourStampsLoaded]);
+  if (!showStore) return (
+    <KeyboardAvoidingView style={{flexDirection: "column", alignItems: "center", justifyContent: "center", height: "85%"}}>
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "30%", alignItems: "center",  marginBottom: -70, marginTop: 10}}>
+        <Text style={{fontFamily: "DepartureMono"}}>{username}'s stamps</Text>
+        <Pressable onPress={() => {setShowStore(true)}}>
+          <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}}>view store</Text>
+        </Pressable>
+        </View> 
+      <View style={{marginLeft: 300, flex: 0, flexDirection: "column", width: 1000, height: "100%", alignItems: "center", justifyContent: "center",  marginBottom: -70, marginTop: 10}}>
+          <FlatList
+          data={yourStamps}
+          renderItem={({item}) =>
+            <View style={{ height: 220, width: 500, flex: 0, justifyContent: "center"}}>
+              <Text style={{fontFamily: 'DepartureMono'}}>{item.prettyName}</Text>
+              //view users stamps 
+                <Image source={{ uri: item.imgLink}} style={styles.stampStyle}/>
+
+            </View>}
+          keyExtractor={item => item.prettyName}
+        />
+      </View> 
+    </KeyboardAvoidingView>
+  )
+  else return( // show stamp store interface 
+    <KeyboardAvoidingView style={{flexDirection: "column", alignItems: "center", justifyContent: "center", height: "85%"}}>
+      <View style={{flex: 0, flexDirection: "row", width: 350, height: "30%", alignItems: "center",  marginBottom: -70, marginTop: 10}}>
+        <Text style={{fontFamily: "DepartureMono"}}>{username}'s stamps</Text>
+        <Pressable onPress={() => {setShowStore(false)}}>
+          <Text style={{fontFamily: "DepartureMono", color: "blue", marginLeft: 10}}>view your stamps</Text>
+        </Pressable>
+        </View> 
+      <View style={{marginLeft: 300, flex: 0, flexDirection: "column", width: 1000, height: "100%", alignItems: "center", justifyContent: "center",  marginBottom: -70, marginTop: 10}}>
+          <FlatList
+          data={stamps}
+          renderItem={({item}) =>
+            <View style={{ height: 300, width: 500, flex: 0, justifyContent: "center"}}>
+              <Text style={{fontFamily: 'DepartureMono'}}>{item.prettyName}</Text>
+              //view users stamps 
+                <Image source={{ uri: item.imgLink}} style={styles.stampStyle}/>
+                {yourStamps.includes(item.prettyName) ?
+                <Text style={{fontFamily: "DepartureMono", color: "green"}}>You have this stamp!</Text> :
+                <Pressable onPress={() => {
+                  const reqHeaders = {'Content-Type': "application/json", "Authorization": authToken}
+                  const req = new Request("http://192.168.1.26:3000/buyStamp", {
+                    method: "POST",
+                    headers: reqHeaders,
+                    body: JSON.stringify({
+                      stampName: item.prettyName
+                    })
+                  });
+                  fetch(req).then((response) => {
+                    if (response.status == 201) {
+                      console.log("Bought stamp " + item.prettyName);
+                      setYourStamps([...yourStamps, item.prettyName]); // add stamp to your stamps
+                    } else {
+                      console.log("Failed to buy stamp " + item.prettyName);
+                    }
+                  }).catch((error) => {console.log(error)});
+                }}>
+                  <Text style={{fontFamily: "DepartureMono", color: "blue"}}>buy this stamp</Text>
+                </Pressable>
+                }
+            </View>}
+          keyExtractor={item => item.prettyName}
+        />
+      </View> 
+    </KeyboardAvoidingView>
+  )
+
+  }
+  
 function UserProfile ({props}) {
   // Function to view a user's profile 
 }
@@ -610,22 +727,22 @@ function AppTabBar({ navigation, state, username, authToken }) {
   return (
     <View style={styles.bottomCtrlBar}>
      {/*Below: Bottom control bar logic */}
-      <View style={routeName == "MainFeed" ? styles.pressableLit : styles.bottomCtrlPressable}>
+      <View style={routeName === "MainFeed" ? styles.pressableLit : styles.bottomCtrlPressable}>
       <Pressable onPress={() => {navigation.navigate('MainFeed', {authToken: authToken});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/mainfeed.png')} /> 
       </Pressable>
      </View>
-      <View style={routeName == "CreatePostcard" ? styles.pressableLit : styles.bottomCtrlPressable}>
+      <View style={routeName === "CreatePostcard" ? styles.pressableLit : styles.bottomCtrlPressable}>
       <Pressable onPress={() => {navigation.navigate('CreatePostcard', {authToken: authToken, username: username});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/createpostcard.png')} /> 
       </Pressable>
      </View>
-      <View style={styles.bottomCtrlPressable}>
-      <Pressable onPress={() => {navigation.navigate('StampCollection');}}>
+      <View style={routeName === "StampCollection" ? styles.pressableLit : styles.bottomCtrlPressable}>
+      <Pressable onPress={() => {navigation.navigate('StampCollection', {authToken: authToken, username: username});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/stampcollection.png')} /> 
       </Pressable>
      </View>
-           <View style={routeName == "Scrapbook" ? styles.pressableLit : styles.bottomCtrlPressable}>
+           <View style={routeName === "Scrapbook" ? styles.pressableLit : styles.bottomCtrlPressable}>
       <Pressable onPress={() => {navigation.navigate('Scrapbook', {authToken: authToken, username: username, yourUserName: username});}}>
         <Image style={styles.ctlBarImg} source={require('../assets/images/myscrapbook.png')} /> 
       </Pressable>
